@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<body>
+<input type="file" id="fileInput" accept=".svg">
+<script>
+function swapAttributes(front, back) {
+    // 处理line元素（保持字符串原始值）
+    if (front.tagName === 'line' && back.tagName === 'line') {
+        const attrs = ['x1', 'y1', 'x2', 'y2'];
+        attrs.forEach(attr => {
+            // 直接交换原始字符串值
+            const frontVal = front.getAttribute(attr);
+            const backVal = back.getAttribute(attr);
+            front.setAttribute(attr, backVal);
+            back.setAttribute(attr, frontVal);
+        });
+    }
+    // 处理path元素（保持d属性原样）
+    else if (front.tagName === 'path' && back.tagName === 'path') {
+        const frontD = front.getAttribute('d');
+        const backD = back.getAttribute('d');
+        front.setAttribute('d', backD);
+        back.setAttribute('d', frontD);
+    }
+}
+
+function processSVG(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(e.target.result, "image/svg+xml");
+        
+        // 获取所有需要处理的元素（保持原始顺序）
+        const elements = [...doc.querySelectorAll('line, path')]
+            .filter(e => !e.id.includes('导图使用透明层'));
+        
+        // 创建交换对
+        const total = elements.length;
+        for (let i = 0; i < total / 2; i++) {
+            const front = elements[i];
+            const back = elements[total - 1 - i];
+            if (front && back) swapAttributes(front, back);
+        }
+
+        // 序列化时保持原始格式
+        const serializer = new XMLSerializer();
+        let svgString = serializer.serializeToString(doc)
+            .replace(/^<\?xml.*\?>/, '<?xml version="1.0" encoding="UTF-8"?>')
+            .replace(/(\d)\.(\d+)/g, '$1.$2'); // 保持小数点格式
+
+        // 下载文件
+        const blob = new Blob([svgString], {type: 'image/svg+xml'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'precision-kept.svg';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    };
+    reader.readAsText(file);
+}
+
+document.getElementById('fileInput').addEventListener('change', (e) => {
+    processSVG(e.target.files[0]);
+});
+</script>
+</body>
+</html>
